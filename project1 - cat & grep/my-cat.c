@@ -6,7 +6,7 @@ int main(int argc, char** argv )
     // If no file is passed exit with error status 0
     if (argc < 2)
     {
-        exit(0);
+        exit(1);
     }
 
     // Read the files and print them out on the console in order

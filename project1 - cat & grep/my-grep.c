@@ -5,13 +5,47 @@
  
 int main(int argc, char** argv )
 {
-    // If no file is passed exit with error status 0
+    // If no file is passed accept user input
     if (argc < 3)
     {
-        exit(1);
+        unsigned int maximum_length = 128;
+        unsigned int current_size = 0;
+    
+        char *string_pointer = malloc(maximum_length);
+        current_size = maximum_length;
+
+        if(string_pointer != NULL)
+        {
+            int c = EOF;
+            unsigned int i =0;
+
+            //accept user input until hit enter or end of file
+            while (( c = getchar() ) != '\n' && c != EOF)
+            {
+                string_pointer[i++]=(char)c;
+
+                //if i reached maximize_size then realloc size
+                if(i == current_size)
+                {
+                    current_size = i+maximum_length;
+                    string_pointer = realloc(string_pointer, current_size);
+                }
+            }
+
+            string_pointer[i] = '\0';
+
+            if (strstr(string_pointer, argv[1]))
+            {
+                printf("%s", string_pointer);
+            }
+            //free string pointer
+            free(string_pointer);
+            string_pointer = NULL;
+        }
+        return 0;
     }
 
-    // Read the files and print them out on the console in order
+    // If file is passed read the files and print them out on the console in order
     for (int index = 2; index < argc; index++)
     {
         FILE* file_pointer = fopen(argv[index], "r");
@@ -30,14 +64,21 @@ int main(int argc, char** argv )
             if (strstr(line, argv[1]))
             {
                 printf("%s",line);
+                printf("\n");
             }
         }
-        
-        fclose(file_pointer);  
+
+        fclose(file_pointer);
+          
         if (line)
         {
             free(line);
-        }     
+        }
+
+        if (file_pointer) 
+        {
+            free(file_pointer);
+        }
     }
 
     exit(0);

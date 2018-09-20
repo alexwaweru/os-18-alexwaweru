@@ -26,7 +26,12 @@ int main(int argc, char** argv )
         } 
         printf("\n\n");
 
-        fclose(file_pointer);       
+        fclose(file_pointer); 
+
+        if (file_pointer)    
+        {
+            free(file_pointer);
+        }  
     }
 
     exit(0);

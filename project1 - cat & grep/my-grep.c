@@ -14,6 +14,8 @@ int main(int argc, char** argv )
         char *string_pointer = malloc(maximum_length);
         current_size = maximum_length;
 
+        printf("Enter a string to search from: ");
+        
         if(string_pointer != NULL)
         {
             int c = EOF;

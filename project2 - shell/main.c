@@ -26,7 +26,9 @@ char *wish_read_line()
     current_size = maximum_length;
     // Check for successful memory allocation
     if(!string_pointer){
+        printf("\033[1;31m");
         fprintf(stderr, "Memory Allocation Error!\n");
+        printf("\033[0m");
         exit(EXIT_FAILURE);
     }
 
@@ -48,7 +50,9 @@ char *wish_read_line()
             string_pointer = realloc(string_pointer, current_size);
             // Check for proper memory allocation
             if (!string_pointer){
+                printf("\033[1;31m");
                 fprintf(stderr, "Memory Allocation Error!\n");
+                printf("\033[0m");
                 exit(EXIT_FAILURE);
             }
         }
@@ -86,7 +90,6 @@ char **wish_tokenize_line(char *line)
     char **tokens = malloc(16 * sizeof(char));
     int position = 0;
     int bufsize = 16;
-
     while (scan_string(line, string_len, &start_index, &end_index, ' ') >= 0 ) {
         int ss = 0, ee = 0;
         while (scan_string(line + start_index, end_index-start_index, &ss, &ee, '\t') >= 0 ) {
@@ -103,7 +106,9 @@ char **wish_tokenize_line(char *line)
             }
             // Check for correct memory allocation
             if (!tokens){
+                printf("\033[1;31m");
                 fprintf(stderr, "memory reallocation error!\n");
+                printf("\033[0m");
                 exit(EXIT_FAILURE);
             }
         }
@@ -118,10 +123,10 @@ char **wish_tokenize_line(char *line)
   Builtin commands function declarations:
  */
 int wish_cd(char **args);
-int wish_help();
+int wish_help(char **args);
 int wish_exit(char **args);
 int wish_ls(char **args);
-int wish_path(char *string);
+int wish_path(char **args);
 
 char *builtin_str[] = {
   "cd",
@@ -136,7 +141,7 @@ int (*builtin_func[]) (char **) = {
   &wish_help,
   &wish_exit,
   &wish_ls,
-  //&wish_path
+  &wish_path
 };
 
 int wish_num_builtins() {
@@ -167,12 +172,11 @@ int wish_ls(char **args)
             struct stat path_stat;
             char *path = dir->d_name;
             stat(path, &path_stat);
-            // Set print color of folder/directories to white
             if(S_ISDIR(path_stat.st_mode)){
                 printf("\033[1;34m");
                 printf("%s\t", dir->d_name);
+                printf("\033[0m");
             }
-            // Set print color of files to blue
             if(S_ISREG(path_stat.st_mode)) {
                 printf("\033[0m");
                 printf("%s\t", dir->d_name);
@@ -181,7 +185,6 @@ int wish_ls(char **args)
         printf("\033[0m");
         printf("\n");
         closedir(d);
-
         return 1;
     }
 }
@@ -190,35 +193,27 @@ int wish_ls(char **args)
 /**
  * @brief Execute builtin path inorder to add path arguments to the search path
  */
-int wish_path(char *string)
+int state = 1;
+int wish_path(char **args)
 {
-    if(access( "path_variables.txt", F_OK ) != -1) {
-        // File exists || Check if fiest line is "\bin\"
-        FILE *path_file_pointer = fopen("path_variables.txt", "r+");
-        char buff[255];
-        char *line  =  fgets(buff, 255, (FILE*)path_file_pointer);
-        if (line != "/bin/"){
-            fprintf(path_file_pointer, "/bin/\n");
-        }
-        fprintf(path_file_pointer, "%s", string);
-        fprintf(path_file_pointer, "\n");
+    if (args[1] != NULL){
+        setenv("$PATH", args[1], 0);
+        return 1;
     } else {
-        // File doesn't exist
-        FILE *new_path_file_pointer = fopen("path_variables.txt", "a");
-        fputs("/bin/\n", new_path_file_pointer);
-        fputs(string, new_path_file_pointer);
-        fputs("\n", new_path_file_pointer);
+        state = 0;
+        printf("\033[1;31m");
+        fprintf(stderr, "wish: path is now empty\n");
+        printf("\033[0m");
     }
-    //return 1;
 }
 
 
 /**
  * @brief Executes the help command which gives guidance to the user
  */
-int wish_help()
+int wish_help(char **args)
 {
-    int i;
+    printf("\033[1;33m");
     printf("......................................................");
     printf("\nWelcome to Njoroge Waweru's WISH SHELL\n");
     printf("The following commands are built in:\n");
@@ -226,6 +221,7 @@ int wish_help()
     printf("Type program names and arguments, and hit enter.\n\n");
     printf("Use the man command for information on other programs.\n");
     printf("......................................................\n\n");
+    printf("\033[0m");
     return 1;
 }
 
@@ -236,10 +232,14 @@ int wish_help()
 int wish_cd(char **args)
 {
     if (args[1] == NULL) {
+        printf("\033[1;31m");
         fprintf(stderr, "wish: expected argument to \"cd\"\n");
+        printf("\033[0m");
     } else {
         if (chdir(args[1]) != 0) {
+            printf("\033[1;31m");
             perror("wish");
+            printf("\033[0m");
         }
     }
     return 1;
@@ -251,25 +251,28 @@ int wish_cd(char **args)
   @param args Null terminated list of arguments (including program).
   @return Always returns 1, to continue execution.
  */
-int lsh_launch(char **args)
+int wish_launch(char **args)
 {
-  pid_t pid, wpid;
+  pid_t pid, wait_pid;
   int status;
-
   pid = fork();
   if (pid == 0) {
     // Child process
     if (execvp(args[0], args) == -1) {
+      printf("\033[1;31m");
       perror("wish");
+      printf("\033[0m");
     }
     exit(EXIT_FAILURE);
   } else if (pid < 0) {
     // Error forking
+    printf("\033[1;31m");
     perror("wish");
+    printf("\033[0m");
   } else {
     // Parent process
     do {
-      wpid = waitpid(pid, &status, WUNTRACED);
+      wait_pid = waitpid(pid, &status, WUNTRACED);
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
   }
 
@@ -280,25 +283,29 @@ int lsh_launch(char **args)
 /**
    @brief Execute shell built-in or launch program.
    @param args Null terminated list of arguments.
-   @return 1 if the shell should continue running, 0 if it should terminate
+   @return 1 after every command is executed.
  */
 int wish_execute_arguments(char **args)
 {
   int i;
-
   if (args[0] == NULL) {
     // An empty command was entered.
     return 1;
   }
-
   for (i = 0; i < wish_num_builtins(); i++) {
     if (strcmp(args[0], builtin_str[i]) == 0) {
       return (*builtin_func[i])(args);
     }
   }
 
-  return lsh_launch(args);
-}
+  if(state==1){
+    return wish_launch(args);
+  }
+  printf("\033[1;31m");
+  printf("wish: Check your path or command spelling!\n");
+  printf("\033[0m");
+  return 1;
+  }
 
 
 /**
@@ -323,14 +330,53 @@ void wish_loop(void)
 
 
 /**
+ * @brief loop reading line, executing it and writing output on a file
+ */
+int wish_loop_batch(char *filename)
+{
+    FILE* file_pointer = fopen(filename, "r");
+    FILE* output = fopen("output.txt", "w");
+
+    if(!file_pointer)
+        {
+            printf("\033[1;31m");
+            perror("cannot open file\n");
+            printf("\033[0m");
+            return EXIT_FAILURE;
+        }
+
+    char *line;
+    size_t len = 0;
+    ssize_t read;
+
+    while ((read = getline(&line, &len, file_pointer)) != -1) 
+    {
+        char **args;
+        int status;
+        
+        line[strcspn(line, "\n")] = 0;
+        args = wish_tokenize_line(line);
+        status = wish_execute_arguments(args);
+    }
+    fclose(file_pointer);
+    fclose(output);
+    return 0;
+}
+
+
+/**
    @brief The main entry point of the wish shell.
-   @param argc - number of arguments, argv - argument vector.
-   @return status for running each command.
  */
 int main(int argc, char **argv)
 {
-    wish_loop();
+    if (argc == 1){
+        wish_loop();
+    }else if (argc == 2){
+        int c = wish_loop_batch(argv[1]);
+    }else{
+        printf("\033[1;31m");
+        printf("Arguments exceed 2!\n");
+        printf("\033[0m");
+    }
+    return 0;
 }
-
- 
-
